@@ -1,0 +1,23 @@
+#!/bin/python
+#coding=utf8
+
+import PubSubHelper
+
+if __name__ == "__main__":
+    subr = SubRedis()
+    channel = "test"
+    channel1 = "test2"
+    msg = {"hello":"world"}
+    consumer = "consumer1"
+    
+    #create a consumer who subscribe channel
+    subr.create_consumer_group(consumer,channel)
+    
+    #publish msg to channel
+    print(subr.publish(channel,msg))
+    
+    #get infos of channel
+    print(subr.channel_consumers_info(channel))
+    
+    #and this consumer can subscribe an other channel1
+    subr.subscribe(consumer,channel1)
