@@ -5,6 +5,6 @@ Requirment:
 redis5.0 or higher
 
 Function:
-1.subscribe/unsubscribe an channel
-2.publish a strting or dict to an specific channel
-3.recording consumers info
+1.subscribe/unsubscribe an channel;
+2.publish a strting or dict to an specific channel;
+3.recording consumers info;
