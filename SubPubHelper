@@ -1,0 +1,62 @@
+#!/bin/python
+#coding=utf8
+
+import redis
+import sys
+import logging
+
+redisInfo ={
+    "SubRedisAddress":"127.0.0.1",
+    "SubRedisPort":6379,
+    "SubRedisPassword":"",
+    "db":0
+}
+
+logging.basicConfig(filename="PubSubHelper.log", filemode="w", format="%(asctime)s %(name)s:%(levelname)s:%(message)s",
+datefmt="%d-%M-%Y %H:%M:%S", level=logging.WARNING)
+
+
+class SubRedis(object):
+
+    def __init__(self):
+        if not hasattr(SubRedis, 'pool'):
+            SubRedis.getRedisCoon()  #get redis connection
+        self._coon = redis.Redis(connection_pool=SubRedis.pool)
+
+    @staticmethod
+    def getRedisCoon():
+        SubRedis.pool = redis.ConnectionPool(host=redisInfo['SubRedisAddress'], password=redisInfo['SubRedisPassword'],
+port=redisInfo['SubRedisPort'], db=redisInfo['db'])
+
+    #return infos of a channel: num of subscriber,last delivered msg id...
+    def channel_info(self,channel):
+        return self._coon.xinfo_stream(channel)
+
+    #return subscribers specific info of a channel
+    def channel_consumers_info(self,channel):
+        InfoList = self._coon.xinfo_groups(channel)
+        for GroupDict in InfoList:
+            GroupDict.pop("consumers")
+        return InfoList
+
+    def create_consumer_group(self,name,channel):
+        ret = self._coon.xgroup_create(channel,name,id="$")
+        if ret == True:
+            print self.channel_consumers_info(channel)
+        else:
+            logging.error("create consumer %s fill,ret %s" %(name,ret))
+
+    def publish(self,channel,msg):
+        msgid = self._coon.xadd(channel,msg)
+        return msgid
+
+    #an exist consumer subscribe an exist channel
+    def subscribe(self,name,channel):
+        channel_consumers_infolist = self.channel_consumers_info(channel)
+        for consumer_dict in channel_consumers_infolist:
+            if name in consumer_dict.values():
+                logging.warning("consumer %s has already subscribed %s" %(name, channel))
+                return
+        self.create_consumer_group(name,channel)
+        print "%s subscribe %s success,channel %s info:"%(name,channel,channel),self.channel_consumers_info(channel)
+        return
