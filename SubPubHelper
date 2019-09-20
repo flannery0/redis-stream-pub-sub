@@ -26,7 +26,7 @@ class SubRedis(object):
     @staticmethod
     def getRedisCoon():
         SubRedis.pool = redis.ConnectionPool(host=redisInfo['SubRedisAddress'], password=redisInfo['SubRedisPassword'],
-port=redisInfo['SubRedisPort'], db=redisInfo['db'])
+port=redisInfo['SubRedisPort'], db=redisInfo['db'], decode_responses=True))
 
     #return infos of a channel: num of subscriber,last delivered msg id...
     def channel_info(self,channel):
@@ -49,14 +49,36 @@ port=redisInfo['SubRedisPort'], db=redisInfo['db'])
     def publish(self,channel,msg):
         msgid = self._coon.xadd(channel,msg)
         return msgid
-
-    #an exist consumer subscribe an exist channel
-    def subscribe(self,name,channel):
+    
+    def consumer_already_subscribed(self,channel,consumer):
         channel_consumers_infolist = self.channel_consumers_info(channel)
         for consumer_dict in channel_consumers_infolist:
-            if name in consumer_dict.values():
-                logging.warning("consumer %s has already subscribed %s" %(name, channel))
-                return
+            if consumer in consumer_dict.values():
+                logging.warning("consumer %s has already subscribed %s" % (consumer, channel))
+                return True
+        return False
+    
+    #an exist consumer subscribe an exist channel
+    def subscribe(self,name,channel):
+        if(self.consumer_already_subscribed(channel,consumer)):
+            return False
         self.create_consumer_group(name,channel)
         print "%s subscribe %s success,channel %s info:"%(name,channel,channel),self.channel_consumers_info(channel)
         return
+    
+    #listen_channel and write into file
+    def listen_channel(self,channel,consumer,file):
+        if not (self.consumer_already_subscribed(channel,consumer)):
+            return False
+        mess = self._coon.xreadgroup(consumer,consumer,{channel:">"})
+        if mess != []:
+            msg_list = mess[0][1]
+            for msg in msg_list:
+                id, content = msg[0], msg[1]
+                content["msgid"] = id
+                json_content = json.dumps(content)
+                json_content += ","
+                print ("new message: ",content)
+                with open(file, "a") as f:
+                    f.write(json_content)
+                self._coon.xack(channel, consumer, id)
