@@ -9,6 +9,7 @@ if __name__ == "__main__":
     channel1 = "test2"
     msg = {"hello":"world"}
     consumer = "consumer1"
+    file = "/usr/message_send/sub_manager/client.json"
     
     #create a consumer who subscribe channel
     subr.create_consumer_group(consumer,channel)
@@ -21,3 +22,9 @@ if __name__ == "__main__":
     
     #and this consumer can subscribe an other channel1
     subr.subscribe(consumer,channel1)
+    
+    listen_channel
+    while True:
+        subr.listen_channel(channel,consumer,file)
+    
+    
